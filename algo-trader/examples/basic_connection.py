@@ -18,17 +18,17 @@ import config
 
 class TestConnection(EWrapper, EClient):
     """Simple connection test."""
-    
+
     def __init__(self):
         EClient.__init__(self, self)
-        
+
     def error(self, reqId, errorCode, errorString, advancedOrderReject=""):
         """Handle errors."""
         if errorCode in [2104, 2106, 2158]:
             print(f"✅ {errorString}")
         else:
             print(f"❌ Error {errorCode}: {errorString}")
-    
+
     def nextValidId(self, orderId):
         """Connection successful."""
         print(f"\n{'='*50}")
@@ -36,7 +36,7 @@ class TestConnection(EWrapper, EClient):
         print(f"{'='*50}")
         print(f"Next Valid Order ID: {orderId}")
         print(f"{'='*50}\n")
-        
+
     def currentTime(self, time):
         """Receive server time."""
         from datetime import datetime
@@ -52,22 +52,22 @@ def main():
     print(f"Port: {config.TWS_PORT}")
     print(f"Client ID: {config.CLIENT_ID}")
     print("="*50 + "\n")
-    
+
     app = TestConnection()
     app.connect(config.TWS_HOST, config.TWS_PORT, config.CLIENT_ID)
-    
+
     # Request server time to verify connection
     def request_time():
         if app.isConnected():
             app.reqCurrentTime()
-    
+
     def disconnect():
         print("\nDisconnecting...")
         app.disconnect()
-    
+
     Timer(1, request_time).start()
     Timer(3, disconnect).start()
-    
+
     app.run()
     print("✅ Test complete!")
 
