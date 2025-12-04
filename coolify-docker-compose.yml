@@ -1,0 +1,52 @@
+# Coolify-optimized Docker Compose for IB Gateway
+# Deploy this via Coolify's Docker Compose deployment
+#
+# Required environment variables (set in Coolify UI):
+#   - TWS_USERID: Your IBKR username
+#   - TWS_PASSWORD: Your IBKR password
+#   - VNC_SERVER_PASSWORD: Password for VNC access
+#
+name: ib-gateway
+
+services:
+  ib-gateway:
+    image: ghcr.io/gnzsnz/ib-gateway:latest
+    restart: always
+    environment:
+      # Required credentials (Coolify will show these with red border)
+      - TWS_USERID=${TWS_USERID:?}
+      - TWS_PASSWORD=${TWS_PASSWORD:?}
+      - VNC_SERVER_PASSWORD=${VNC_SERVER_PASSWORD:?}
+      # Trading mode: paper, live, or both
+      - TRADING_MODE=${TRADING_MODE:-paper}
+      # Timezone
+      - TIME_ZONE=${TIME_ZONE:-America/New_York}
+      - TZ=${TIME_ZONE:-America/New_York}
+      # 2FA handling - restart on timeout to avoid manual intervention
+      - TWOFA_TIMEOUT_ACTION=${TWOFA_TIMEOUT_ACTION:-restart}
+      - RELOGIN_AFTER_TWOFA_TIMEOUT=${RELOGIN_AFTER_TWOFA_TIMEOUT:-yes}
+      - TWOFA_EXIT_INTERVAL=${TWOFA_EXIT_INTERVAL:-60}
+      # Auto restart daily to maintain fresh session
+      - AUTO_RESTART_TIME=${AUTO_RESTART_TIME:-11:59 PM}
+      # Session handling
+      - EXISTING_SESSION_DETECTED_ACTION=${EXISTING_SESSION_DETECTED_ACTION:-primary}
+      # API settings
+      - READ_ONLY_API=${READ_ONLY_API:-no}
+      - ALLOW_BLIND_TRADING=${ALLOW_BLIND_TRADING:-no}
+      # Optional settings (leave empty to use defaults)
+      - TWS_SETTINGS_PATH=${TWS_SETTINGS_PATH:-}
+      - TWS_ACCEPT_INCOMING=${TWS_ACCEPT_INCOMING:-}
+      - BYPASS_WARNING=${BYPASS_WARNING:-}
+      - CUSTOM_CONFIG=${CUSTOM_CONFIG:-NO}
+    ports:
+      # API ports - accessible from other Coolify services or external
+      - "4001:4003"  # Live trading API
+      - "4002:4004"  # Paper trading API
+      - "5900:5900"  # VNC (for debugging/monitoring)
+    # Optional: persist TWS settings across container restarts
+    # volumes:
+    #   - tws-settings:/home/ibgateway/Jts
+
+# Optional: named volume for settings persistence
+# volumes:
+#   tws-settings:
