@@ -1,0 +1,5 @@
+# TWS API Python Client
+ibapi
+
+# Optional: For enhanced output formatting
+rich>=13.0.0
