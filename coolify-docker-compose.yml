@@ -56,6 +56,13 @@ services:
     # VNC bound to localhost only - accessible via SSH tunnel, NOT from internet
     ports:
       - "127.0.0.1:5900:5900"
+    # Health check - wait for API port to be available (socat forwards to 4004)
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 4004 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
     # Optional: persist TWS settings across container restarts
     # volumes:
     #   - tws-settings:/home/ibgateway/Jts
@@ -69,7 +76,8 @@ services:
       dockerfile: Dockerfile
     restart: always
     depends_on:
-      - ib-gateway
+      ib-gateway:
+        condition: service_healthy
     environment:
       # IB Gateway connection (uses Docker internal network)
       - IB_GATEWAY_HOST=ib-gateway

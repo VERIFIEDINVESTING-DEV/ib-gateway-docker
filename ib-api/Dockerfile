@@ -33,11 +33,10 @@ USER app
 # Expose API port
 EXPOSE 8000
 
-# Health check - use /ping which always returns 200 if server is running
-# The /health endpoint may return 503 if IB Gateway isn't connected, but
-# the API server itself is still functional and shouldn't be restarted
+# Health check - verify the server responds (ignores 503 from IB Gateway disconnection)
+# The API server itself is still functional even if IB Gateway isn't connected
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ping')" || exit 1
+    CMD python -c "import urllib.request; from urllib.error import HTTPError; exec('try:\\n    urllib.request.urlopen(\"http://127.0.0.1:8000/health\")\\nexcept HTTPError:\\n    pass')" || exit 1
 
 # Run uvicorn server
 # --proxy-headers: Trust X-Forwarded-* headers from Coolify's Traefik proxy

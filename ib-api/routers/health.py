@@ -8,7 +8,6 @@ This endpoint is PUBLIC (no authentication required) and is used by:
 """
 
 import logging
-import uuid
 
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
@@ -22,27 +21,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Health"])
 
 
-@router.get("/ping")
-async def ping() -> dict:
-    """
-    Simple liveness check - always returns 200.
-    
-    Use this for Docker health checks and load balancer liveness probes.
-    Unlike /health, this doesn't check IB Gateway connectivity.
-    """
-    return {"status": "ok"}
-
-
 class HealthResponse(BaseModel):
     """Health check response model."""
     status: str  # "healthy", "degraded", or "unhealthy"
     connected: bool
     account_ready: bool
-    account_id: str | None
     trading_mode: str
     gateway_host: str
     gateway_port: int
-    last_error: str | None = None
 
 
 @router.get(
@@ -88,11 +74,9 @@ async def health_check() -> JSONResponse:
             status=health_status,
             connected=status_data["connected"],
             account_ready=status_data["account_ready"],
-            account_id=status_data["account_id"],
             trading_mode=status_data["trading_mode"],
             gateway_host=status_data["gateway_host"],
             gateway_port=status_data["gateway_port"],
-            last_error=status_data["last_error"],
         )
 
         return JSONResponse(
@@ -101,11 +85,8 @@ async def health_check() -> JSONResponse:
         )
 
     except Exception:
-        # Generate opaque error ID for correlation between logs and client response
-        error_id = uuid.uuid4().hex[:8]
-        
-        # Log full exception with error ID for debugging
-        logger.exception(f"Health check failed [error_id={error_id}]")
+        # Log exception for debugging
+        logger.exception("Health check failed")
 
         # Return generic error message - never expose exception details to client
         return JSONResponse(
@@ -114,10 +95,8 @@ async def health_check() -> JSONResponse:
                 "status": "unhealthy",
                 "connected": False,
                 "account_ready": False,
-                "account_id": None,
                 "trading_mode": "unknown",
                 "gateway_host": "unknown",
                 "gateway_port": 0,
-                "last_error": f"Internal server error [ref: {error_id}]",
             },
         )
