@@ -85,34 +85,34 @@ def create_access_token(
 ) -> tuple[str, int]:
     """
     Create a JWT access token.
-    
+
     Returns:
         Tuple of (encoded_jwt, expires_in_seconds)
     """
     to_encode = data.copy()
-    
+
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
         expires_in = int(expires_delta.total_seconds())
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expire_minutes)
         expires_in = settings.jwt_expire_minutes * 60
-    
+
     to_encode.update({"exp": expire})
-    
+
     encoded_jwt = jwt.encode(
         to_encode,
         settings.jwt_secret.get_secret_value(),
         algorithm=settings.jwt_algorithm
     )
-    
+
     return encoded_jwt, expires_in
 
 
 def verify_token(token: str, settings: Settings) -> TokenData:
     """
     Verify and decode a JWT token.
-    
+
     Raises:
         HTTPException: If token is invalid or expired
     """
@@ -121,7 +121,7 @@ def verify_token(token: str, settings: Settings) -> TokenData:
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     try:
         payload = jwt.decode(
             token,
@@ -143,21 +143,21 @@ def verify_token(token: str, settings: Settings) -> TokenData:
 def authenticate_user(username: str, password: str, settings: Settings) -> User | None:
     """
     Authenticate a user with username and password.
-    
+
     For this simple implementation, we check against environment variables.
     No database - single user defined in config.
-    
+
     Note: API_PASSWORD environment variable must contain a bcrypt hash,
     not a plain text password. Generate with:
         python -c "from passlib.context import CryptContext; print(CryptContext(schemes=['bcrypt']).hash('your-password'))"
     """
     if username != settings.api_username:
         return None
-    
+
     # Verify password against bcrypt hash stored in environment
     if not verify_password(password, settings.api_password.get_secret_value()):
         return None
-    
+
     return User(username=username)
 
 
@@ -171,14 +171,14 @@ async def get_current_user(
 ) -> User:
     """
     Dependency to get the current authenticated user from JWT token.
-    
+
     Usage:
         @app.get("/protected")
         async def protected_route(user: Annotated[User, Depends(get_current_user)]):
             return {"username": user.username}
     """
     token_data = verify_token(token, settings)
-    
+
     # Verify the user still exists (matches our configured user)
     if token_data.username != settings.api_username:
         raise HTTPException(
@@ -186,7 +186,7 @@ async def get_current_user(
             detail="User not found",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     return User(username=token_data.username)
 
 
@@ -201,24 +201,24 @@ async def login_for_access_token(
 ) -> Token:
     """
     OAuth2 compatible token login.
-    
+
     Submit username and password to get a JWT access token.
     Use the token in the Authorization header: `Bearer <token>`
     """
     user = authenticate_user(form_data.username, form_data.password, settings)
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     access_token, expires_in = create_access_token(
         data={"sub": user.username},
         settings=settings
     )
-    
+
     return Token(
         access_token=access_token,
         token_type="bearer",

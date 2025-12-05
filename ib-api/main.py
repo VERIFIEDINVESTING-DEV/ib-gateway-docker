@@ -40,11 +40,11 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """
     Manage application lifecycle.
-    
+
     Startup:
     - Load settings
     - Initialize and connect to IB Gateway
-    
+
     Shutdown:
     - Disconnect from IB Gateway
     - Cleanup resources
@@ -53,14 +53,14 @@ async def lifespan(app: FastAPI):
     logger.info("=" * 60)
     logger.info("IB API Starting Up...")
     logger.info("=" * 60)
-    
+
     settings = get_settings()
     logger.info(f"Trading mode: {settings.trading_mode}")
     logger.info(f"IB Gateway: {settings.ib_gateway_host}:{settings.ib_gateway_port}")
-    
+
     # Initialize IB client
     client = init_ib_client(settings)
-    
+
     # Attempt to connect (non-blocking - will retry in background if needed)
     connected = client.start()
     if connected:
@@ -71,19 +71,19 @@ async def lifespan(app: FastAPI):
             "The API will start but /health will report unhealthy. "
             "Check that IB Gateway is running and 2FA is approved."
         )
-    
+
     logger.info("IB API Ready")
     logger.info("=" * 60)
-    
+
     yield
-    
+
     # Shutdown
     logger.info("=" * 60)
     logger.info("IB API Shutting Down...")
     logger.info("=" * 60)
-    
+
     shutdown_ib_client()
-    
+
     logger.info("IB API Shutdown Complete")
 
 
@@ -153,9 +153,9 @@ async def custom_swagger_ui(
 ) -> HTMLResponse:
     """
     Swagger UI documentation.
-    
+
     Access with: GET /docs?token=<your-jwt-token>
-    
+
     Get a token first: POST /auth/token with your credentials.
     """
     return get_swagger_ui_html(
@@ -171,9 +171,9 @@ async def custom_redoc(
 ) -> HTMLResponse:
     """
     ReDoc documentation.
-    
+
     Access with: GET /redoc?token=<your-jwt-token>
-    
+
     Get a token first: POST /auth/token with your credentials.
     """
     return get_redoc_html(
