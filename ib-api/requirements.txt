@@ -3,8 +3,7 @@ fastapi>=0.109.0
 uvicorn[standard]>=0.27.0
 
 # Interactive Brokers TWS API
-ibapi
-
+ibapi>=10.18.0
 # JWT Authentication
 python-jose[cryptography]>=3.3.0
 

@@ -126,18 +126,25 @@ app.include_router(account_router)
 # Protected Documentation Routes
 # =============================================================================
 
+# SECURITY NOTE: Passing JWT tokens via query parameters exposes them in:
+# - Server logs, proxy logs, browser history, referrer headers
+#
+# This is acceptable here because:
+# 1. Documentation is for internal/developer use only
+# 2. The API itself uses proper Bearer token authentication
+# 3. Tokens are short-lived (30 min default)
+#
+# For higher security, consider:
+# - Session-based auth with cookies for docs
+# - Separate docs authentication layer
+# - Disabling docs in production entirely
+
 async def verify_docs_token(
     token: str = Query(..., description="JWT token for docs access"),
     settings: Settings = Depends(get_settings),
 ) -> None:
     """Verify JWT token for documentation access."""
-    try:
-        verify_token(token, settings)
-    except HTTPException:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token. Get a token from POST /auth/token",
-        )
+    verify_token(token, settings)
 
 
 @app.get("/docs", include_in_schema=False, response_class=HTMLResponse)

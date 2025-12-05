@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class IBClient(EWrapper, EClient):
     """
     Thread-safe Interactive Brokers API client.
-    
+
     Runs the TWS API message loop in a background thread while providing
     thread-safe access to account data for FastAPI endpoints.
     """
@@ -34,24 +34,24 @@ class IBClient(EWrapper, EClient):
     def __init__(self, settings: Settings):
         EWrapper.__init__(self)
         EClient.__init__(self, self)
-        
+
         self.settings = settings
-        
+
         # Thread synchronization
         self._lock = threading.Lock()
         self._connected = threading.Event()
         self._account_ready = threading.Event()
-        
+
         # Thread for running the message loop
         self._thread: threading.Thread | None = None
-        
+
         # Account data (protected by _lock)
         self._account_values: dict[str, dict[str, str]] = {}
         self._positions: list[dict[str, Any]] = []
         self._account_name: str = ""
         self._account_time: str = ""
         self._next_order_id: int = 0
-        
+
         # Error tracking
         self._last_error: str | None = None
 
@@ -62,19 +62,19 @@ class IBClient(EWrapper, EClient):
     def start(self) -> bool:
         """
         Connect to IB Gateway and start the message processing thread.
-        
+
         Returns:
             True if connection successful, False otherwise
         """
         if self._thread is not None and self._thread.is_alive():
             logger.warning("IBClient already running")
             return True
-        
+
         logger.info(
             f"Connecting to IB Gateway at {self.settings.ib_gateway_host}:"
             f"{self.settings.ib_gateway_port} (mode: {self.settings.trading_mode})"
         )
-        
+
         try:
             self.connect(
                 self.settings.ib_gateway_host,
@@ -84,28 +84,28 @@ class IBClient(EWrapper, EClient):
         except Exception as e:
             logger.error(f"Failed to connect to IB Gateway: {e}")
             return False
-        
+
         # Start the message processing thread
         self._thread = threading.Thread(target=self.run, daemon=True)
         self._thread.start()
-        
+
         # Wait for connection to be established
         if not self._connected.wait(timeout=self.settings.ib_connection_timeout):
             logger.error("Connection timeout - IB Gateway did not respond")
             self.stop()
             return False
-        
+
         logger.info("Successfully connected to IB Gateway")
-        
+
         # Request account updates
         self.reqAccountUpdates(True, "")
-        
+
         return True
 
     def stop(self) -> None:
         """Disconnect from IB Gateway and stop the message thread."""
         logger.info("Stopping IBClient...")
-        
+
         try:
             # Stop account updates
             if self.isConnected():
@@ -113,15 +113,15 @@ class IBClient(EWrapper, EClient):
                 self.disconnect()
         except Exception as e:
             logger.error(f"Error during disconnect: {e}")
-        
+
         # Clear connection state
         self._connected.clear()
         self._account_ready.clear()
-        
+
         # Wait for thread to finish
         if self._thread is not None and self._thread.is_alive():
             self._thread.join(timeout=5.0)
-        
+
         self._thread = None
         logger.info("IBClient stopped")
 
@@ -154,12 +154,12 @@ class IBClient(EWrapper, EClient):
     # EWrapper Callbacks - Errors
     # =========================================================================
 
-    def error(self, reqId: int, errorCode: int, errorString: str, 
+    def error(self, reqId: int, errorCode: int, errorString: str,
               advancedOrderReject: str = "") -> None:
         """Handle errors and notifications from TWS."""
         # These are informational messages, not errors
         info_codes = {2104, 2106, 2158, 2107}
-        
+
         if errorCode in info_codes:
             logger.debug(f"[INFO {errorCode}] {errorString}")
         else:
@@ -171,7 +171,7 @@ class IBClient(EWrapper, EClient):
     # EWrapper Callbacks - Account Data
     # =========================================================================
 
-    def updateAccountValue(self, key: str, val: str, currency: str, 
+    def updateAccountValue(self, key: str, val: str, currency: str,
                           accountName: str) -> None:
         """Receive account value updates."""
         with self._lock:
@@ -185,6 +185,17 @@ class IBClient(EWrapper, EClient):
                        averageCost: float, unrealizedPNL: float,
                        realizedPNL: float, accountName: str) -> None:
         """Receive portfolio position updates."""
+        # Skip closed positions
+        if float(position) == 0:
+            with self._lock:
+                # Remove position if it exists
+                self._positions = [
+                    pos for pos in self._positions
+                    if not (pos["symbol"] == contract.symbol and
+                           pos["secType"] == contract.secType)
+                ]
+            return
+
         position_data = {
             "symbol": contract.symbol,
             "secType": contract.secType,
@@ -197,11 +208,11 @@ class IBClient(EWrapper, EClient):
             "unrealizedPNL": unrealizedPNL,
             "realizedPNL": realizedPNL,
         }
-        
+
         with self._lock:
             # Update existing position or add new one
             for i, pos in enumerate(self._positions):
-                if (pos["symbol"] == contract.symbol and 
+                if (pos["symbol"] == contract.symbol and
                     pos["secType"] == contract.secType):
                     self._positions[i] = position_data
                     return
@@ -224,7 +235,7 @@ class IBClient(EWrapper, EClient):
     def get_account_summary(self) -> dict[str, Any]:
         """
         Get a summary of account data.
-        
+
         Returns:
             Dictionary with account values, positions, and metadata
         """
@@ -233,7 +244,7 @@ class IBClient(EWrapper, EClient):
             summary = {}
             key_metrics = [
                 "NetLiquidation",
-                "TotalCashValue", 
+                "TotalCashValue",
                 "BuyingPower",
                 "AvailableFunds",
                 "GrossPositionValue",
@@ -241,7 +252,7 @@ class IBClient(EWrapper, EClient):
                 "UnrealizedPnL",
                 "RealizedPnL",
             ]
-            
+
             for key in key_metrics:
                 if key in self._account_values:
                     # Get USD value if available, otherwise first currency
@@ -256,14 +267,14 @@ class IBClient(EWrapper, EClient):
                             if curr:
                                 summary[key] = {"value": val, "currency": curr}
                                 break
-            
+
             # Get cash balances
             cash_balances = {}
             if "CashBalance" in self._account_values:
                 for currency, value in self._account_values["CashBalance"].items():
                     if currency and float(value) != 0:
                         cash_balances[currency] = value
-            
+
             return {
                 "account_id": self._account_name,
                 "last_update": self._account_time,
@@ -277,7 +288,7 @@ class IBClient(EWrapper, EClient):
     def get_connection_status(self) -> dict[str, Any]:
         """
         Get connection status for health check.
-        
+
         Returns:
             Dictionary with connection state and metadata
         """
@@ -304,7 +315,7 @@ _client: IBClient | None = None
 def get_ib_client() -> IBClient:
     """
     Get the global IBClient instance.
-    
+
     Raises:
         RuntimeError: If client hasn't been initialized
     """
@@ -316,7 +327,7 @@ def get_ib_client() -> IBClient:
 def init_ib_client(settings: Settings) -> IBClient:
     """
     Initialize the global IBClient instance.
-    
+
     Called during FastAPI startup.
     """
     global _client
@@ -327,7 +338,7 @@ def init_ib_client(settings: Settings) -> IBClient:
 def shutdown_ib_client() -> None:
     """
     Shutdown the global IBClient instance.
-    
+
     Called during FastAPI shutdown.
     """
     global _client

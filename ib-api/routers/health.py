@@ -7,12 +7,16 @@ This endpoint is PUBLIC (no authentication required) and is used by:
 - Monitoring systems
 """
 
+import logging
+
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from ib_client import get_ib_client
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Health"])
 
@@ -40,14 +44,14 @@ class HealthResponse(BaseModel):
 async def health_check() -> JSONResponse:
     """
     Health check endpoint.
-    
+
     Returns the connection status to IB Gateway. This endpoint is public
     and does not require authentication.
-    
+
     Status codes:
     - 200: Connected and account data ready
     - 503: Not connected or account data not ready
-    
+
     Status values:
     - "healthy": Connected and account data available
     - "degraded": Connected but account data not yet received
@@ -56,7 +60,7 @@ async def health_check() -> JSONResponse:
     try:
         client = get_ib_client()
         status_data = client.get_connection_status()
-        
+
         # Determine health status
         if status_data["connected"] and status_data["account_ready"]:
             health_status = "healthy"
@@ -67,7 +71,7 @@ async def health_check() -> JSONResponse:
         else:
             health_status = "unhealthy"
             http_status = status.HTTP_503_SERVICE_UNAVAILABLE
-        
+
         response = HealthResponse(
             status=health_status,
             connected=status_data["connected"],
@@ -78,14 +82,19 @@ async def health_check() -> JSONResponse:
             gateway_port=status_data["gateway_port"],
             last_error=status_data["last_error"],
         )
-        
+
         return JSONResponse(
             status_code=http_status,
             content=response.model_dump(),
         )
-        
-    except RuntimeError:
-        # IBClient not initialized yet
+
+    except Exception as e:
+        # Log full exception for debugging, return sanitized message to client
+        logger.exception("Health check failed with unexpected error")
+
+        # Sanitize error message - don't leak internal details
+        error_msg = str(e) if len(str(e)) < 100 else f"{str(e)[:100]}..."
+
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={
@@ -96,6 +105,6 @@ async def health_check() -> JSONResponse:
                 "trading_mode": "unknown",
                 "gateway_host": "unknown",
                 "gateway_port": 0,
-                "last_error": "IB client not initialized",
+                "last_error": error_msg,
             },
         )

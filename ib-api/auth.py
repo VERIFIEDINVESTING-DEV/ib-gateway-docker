@@ -143,12 +143,16 @@ def authenticate_user(username: str, password: str, settings: Settings) -> User 
     
     For this simple implementation, we check against environment variables.
     No database - single user defined in config.
+    
+    Note: API_PASSWORD environment variable must contain a bcrypt hash,
+    not a plain text password. Generate with:
+        python -c "from passlib.context import CryptContext; print(CryptContext(schemes=['bcrypt']).hash('your-password'))"
     """
     if username != settings.api_username:
         return None
     
-    # Compare plain passwords (password from env is stored in SecretStr)
-    if password != settings.api_password.get_secret_value():
+    # Verify password against bcrypt hash stored in environment
+    if not verify_password(password, settings.api_password.get_secret_value()):
         return None
     
     return User(username=username)
