@@ -77,7 +77,7 @@ class AccountSummaryResponse(BaseModel):
 def get_connected_ib_client() -> IBClient:
     """
     Dependency that returns a connected IB client.
-    
+
     Raises:
         HTTPException 503: If client is not initialized or not connected
     """
@@ -88,13 +88,13 @@ def get_connected_ib_client() -> IBClient:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="IB client not initialized",
         )
-    
+
     if not client.is_connected():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Not connected to IB Gateway",
         )
-    
+
     return client
 
 
@@ -103,18 +103,18 @@ def get_connected_ib_client() -> IBClient:
 # =============================================================================
 
 def _extract_numeric_value(
-    summary: dict, 
-    key: str, 
+    summary: dict,
+    key: str,
     default_currency: str = "USD"
 ) -> AccountValueNumeric:
     """
     Extract a numeric value from the summary dict with safe defaults.
-    
+
     Converts string values to float, handles missing keys gracefully.
     """
     if key not in summary:
         return AccountValueNumeric(value=0.0, currency=default_currency)
-    
+
     raw = summary[key]
     try:
         # raw is {"value": "123.45", "currency": "USD"}
@@ -144,26 +144,26 @@ async def get_account_balance(
 ) -> AccountBalanceResponse:
     """
     Get account balance and positions.
-    
+
     Requires JWT authentication. Returns:
     - Account summary (net liquidation, buying power, etc.)
     - Cash balances by currency
     - Current positions with P&L
-    
+
     **Note**: Data is updated in real-time from IB Gateway. The `last_update`
     field shows when the data was last received from IBKR.
     """
     account_data = client.get_account_summary()
-    
+
     # Convert positions to Pydantic models
     positions = [Position(**pos) for pos in account_data["positions"]]
-    
+
     # Convert summary values to AccountValue models
     summary = {
-        key: AccountValue(**val) 
+        key: AccountValue(**val)
         for key, val in account_data["summary"].items()
     }
-    
+
     return AccountBalanceResponse(
         account_id=account_data["account_id"],
         last_update=account_data["last_update"],
@@ -190,18 +190,18 @@ async def get_account_summary(
 ) -> AccountSummaryResponse:
     """
     Get a simplified account summary.
-    
+
     Requires JWT authentication. Returns key metrics only:
     - Net Liquidation Value
     - Buying Power
     - Available Funds
     - Unrealized P&L
-    
+
     For full details including positions, use `/account/balance`.
     """
     account_data = client.get_account_summary()
     summary = account_data["summary"]
-    
+
     return AccountSummaryResponse(
         account_id=account_data["account_id"],
         trading_mode=account_data["trading_mode"],
