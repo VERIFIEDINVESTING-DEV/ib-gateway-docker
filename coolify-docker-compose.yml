@@ -1,19 +1,34 @@
-# Coolify-optimized Docker Compose for IB Gateway
+# Coolify-optimized Docker Compose for IB Gateway with FastAPI wrapper
 # Deploy this via Coolify's Docker Compose deployment
 #
 # Required environment variables (set in Coolify UI):
-#   - TWS_USERID: Your IBKR username
-#   - TWS_PASSWORD: Your IBKR password
-#   - VNC_SERVER_PASSWORD: Password for VNC access
+#   IB Gateway:
+#     - TWS_USERID: Your IBKR username
+#     - TWS_PASSWORD: Your IBKR password
+#     - VNC_SERVER_PASSWORD: Password for VNC access (SSH tunnel required)
+#   IB API:
+#     - JWT_SECRET: Secret for signing JWT tokens (min 32 chars)
+#       Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+#     - API_USERNAME: Username for API authentication
+#     - API_PASSWORD: Bcrypt hash of API password
+#       Generate with: python -c "from passlib.context import CryptContext; print(CryptContext(schemes=['bcrypt']).hash('your-password'))"
+#
+# VNC Access (for 2FA approval and debugging):
+#   VNC is NOT exposed publicly. Use SSH tunnel:
+#     ssh -L 5900:localhost:5900 user@your-coolify-server
+#   Then connect VNC client to: localhost:5900
 #
 name: ib-gateway
 
 services:
+  # ===========================================================================
+  # IB Gateway - Internal only, no public ports
+  # ===========================================================================
   ib-gateway:
     image: ghcr.io/gnzsnz/ib-gateway:latest
     restart: always
     environment:
-      # Required credentials (Coolify will show these with red border)
+      # Required credentials
       - TWS_USERID=${TWS_USERID:?}
       - TWS_PASSWORD=${TWS_PASSWORD:?}
       - VNC_SERVER_PASSWORD=${VNC_SERVER_PASSWORD:?}
@@ -38,14 +53,35 @@ services:
       - TWS_ACCEPT_INCOMING=${TWS_ACCEPT_INCOMING:-}
       - BYPASS_WARNING=${BYPASS_WARNING:-}
       - CUSTOM_CONFIG=${CUSTOM_CONFIG:-NO}
-    ports:
-      # API ports - accessible from other Coolify services or external
-      - "4001:4003"  # Live trading API
-      - "4002:4004"  # Paper trading API
-      - "5900:5900"  # VNC (for debugging/monitoring)
+    # NO PUBLIC PORTS - ib-api connects internally via Docker network
+    # VNC accessible only via SSH tunnel to the host
     # Optional: persist TWS settings across container restarts
     # volumes:
     #   - tws-settings:/home/ibgateway/Jts
+
+  # ===========================================================================
+  # IB API - FastAPI wrapper with JWT authentication
+  # ===========================================================================
+  ib-api:
+    build:
+      context: ./ib-api
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      - ib-gateway
+    environment:
+      # IB Gateway connection (uses Docker internal network)
+      - IB_GATEWAY_HOST=ib-gateway
+      - TRADING_MODE=${TRADING_MODE:-paper}
+      # JWT Authentication (REQUIRED)
+      - JWT_SECRET=${JWT_SECRET:?}
+      - JWT_EXPIRE_MINUTES=${JWT_EXPIRE_MINUTES:-30}
+      # API Credentials (REQUIRED)
+      - API_USERNAME=${API_USERNAME:?}
+      - API_PASSWORD=${API_PASSWORD:?}
+    ports:
+      # Only ib-api is exposed - Coolify will proxy this to HTTPS
+      - "8000:8000"
 
 # Optional: named volume for settings persistence
 # volumes:
