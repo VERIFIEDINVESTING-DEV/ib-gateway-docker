@@ -53,8 +53,9 @@ services:
       - TWS_ACCEPT_INCOMING=${TWS_ACCEPT_INCOMING:-}
       - BYPASS_WARNING=${BYPASS_WARNING:-}
       - CUSTOM_CONFIG=${CUSTOM_CONFIG:-NO}
-    # NO PUBLIC PORTS - ib-api connects internally via Docker network
-    # VNC accessible only via SSH tunnel to the host
+    # VNC bound to localhost only - accessible via SSH tunnel, NOT from internet
+    ports:
+      - "127.0.0.1:5900:5900"
     # Optional: persist TWS settings across container restarts
     # volumes:
     #   - tws-settings:/home/ibgateway/Jts
