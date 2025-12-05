@@ -22,6 +22,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Health"])
 
 
+@router.get("/ping")
+async def ping() -> dict:
+    """
+    Simple liveness check - always returns 200.
+    
+    Use this for Docker health checks and load balancer liveness probes.
+    Unlike /health, this doesn't check IB Gateway connectivity.
+    """
+    return {"status": "ok"}
+
+
 class HealthResponse(BaseModel):
     """Health check response model."""
     status: str  # "healthy", "degraded", or "unhealthy"
