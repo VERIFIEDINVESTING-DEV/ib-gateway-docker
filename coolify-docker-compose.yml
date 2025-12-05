@@ -80,9 +80,9 @@ services:
       # API Credentials (REQUIRED)
       - API_USERNAME=${API_USERNAME:?}
       - API_PASSWORD=${API_PASSWORD:?}
-    ports:
-      # Exposed to Coolify proxy - it will handle HTTPS
-      - "8000:8000"
+    # No ports needed - Coolify's Traefik proxy routes via Docker network
+    expose:
+      - "8000"
 
 # Optional: named volume for settings persistence
 # volumes:
