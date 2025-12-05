@@ -10,8 +10,8 @@ ibapi
 # JWT Authentication
 python-jose[cryptography]>=3.3.0
 
-# Password hashing
-passlib[bcrypt]>=1.7.4
+# Password hashing (using bcrypt directly, not passlib due to compatibility issues)
+bcrypt>=4.0.0
 
 # Settings management
 pydantic-settings>=2.0.0
