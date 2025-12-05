@@ -11,7 +11,7 @@
 #       Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
 #     - API_USERNAME: Username for API authentication
 #     - API_PASSWORD: Bcrypt hash of API password
-#       Generate with: python -c "from passlib.context import CryptContext; print(CryptContext(schemes=['bcrypt']).hash('your-password'))"
+#       Generate with: python -c "import bcrypt; print(bcrypt.hashpw(b'your-password', bcrypt.gensalt()).decode())"
 #
 # VNC Access (for 2FA approval and debugging):
 #   VNC is NOT exposed publicly. Use SSH tunnel:
