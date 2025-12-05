@@ -51,11 +51,11 @@ from ibapi.wrapper import EWrapper
 class App(EWrapper, EClient):
     def __init__(self):
         EClient.__init__(self, self)
-    
+
     def error(self, reqId, errorCode, errorString, advancedOrderReject=""):
         # Error codes 2104, 2106, 2158 are INFO (connection OK), not errors
         pass
-    
+
     def nextValidId(self, orderId):
         # Connection established - safe to start API calls
         self.start()
