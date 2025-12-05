@@ -3,7 +3,7 @@ Configuration settings for TWS API connection.
 """
 
 # Connection Settings
-TWS_HOST = "ib-gateway.host.verifiedinvesting.com"
+TWS_HOST = "ib-api.host.verifiedinvesting.com"
 
 # Port configuration:
 # - 4001: Live trading (maps to internal 4003)

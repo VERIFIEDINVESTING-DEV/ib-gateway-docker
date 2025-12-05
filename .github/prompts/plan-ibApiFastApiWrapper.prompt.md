@@ -46,7 +46,7 @@
 
 ```bash
 # From any machine with SSH access:
-ssh -L 5900:localhost:5900 root@ib-gateway.host.verifiedinvesting.com
+ssh -L 5900:localhost:5900 root@ib-api.host.verifiedinvesting.com
 
 # Then connect VNC client to: localhost:5900
 # Password: (your VNC_SERVER_PASSWORD)
