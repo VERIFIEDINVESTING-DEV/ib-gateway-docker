@@ -56,9 +56,9 @@ services:
     # VNC bound to localhost only - accessible via SSH tunnel, NOT from internet
     ports:
       - "127.0.0.1:5900:5900"
-    # Health check - wait for API port to be available (socat forwards to 4004)
+    # Health check - wait for API port to be available using bash
     healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 4004 || exit 1"]
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/localhost/4004' 2>/dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 30
