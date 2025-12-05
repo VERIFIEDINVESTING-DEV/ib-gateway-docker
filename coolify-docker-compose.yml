@@ -83,6 +83,13 @@ services:
     # No ports needed - Coolify's Traefik proxy routes via Docker network
     expose:
       - "8000"
+    networks:
+      - default
+      - coolify
+
+networks:
+  coolify:
+    external: true
 
 # Optional: named volume for settings persistence
 # volumes:
