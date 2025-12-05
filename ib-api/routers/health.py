@@ -8,6 +8,7 @@ This endpoint is PUBLIC (no authentication required) and is used by:
 """
 
 import logging
+import uuid
 
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
@@ -88,13 +89,14 @@ async def health_check() -> JSONResponse:
             content=response.model_dump(),
         )
 
-    except Exception as e:
-        # Log full exception for debugging, return sanitized message to client
-        logger.exception("Health check failed with unexpected error")
+    except Exception:
+        # Generate opaque error ID for correlation between logs and client response
+        error_id = uuid.uuid4().hex[:8]
+        
+        # Log full exception with error ID for debugging
+        logger.exception(f"Health check failed [error_id={error_id}]")
 
-        # Sanitize error message - don't leak internal details
-        error_msg = str(e) if len(str(e)) < 100 else f"{str(e)[:100]}..."
-
+        # Return generic error message - never expose exception details to client
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={
@@ -105,6 +107,6 @@ async def health_check() -> JSONResponse:
                 "trading_mode": "unknown",
                 "gateway_host": "unknown",
                 "gateway_port": 0,
-                "last_error": error_msg,
+                "last_error": f"Internal server error [ref: {error_id}]",
             },
         )
