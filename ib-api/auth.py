@@ -12,8 +12,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from pydantic import BaseModel
+import bcrypt
 
 from config import Settings, get_settings
 
@@ -29,17 +29,20 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 # Password Hashing
 # =============================================================================
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a plain password against a hashed password."""
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verify a plain password against a bcrypt hash."""
+    return bcrypt.checkpw(
+        plain_password.encode('utf-8'),
+        hashed_password.encode('utf-8')
+    )
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a password for storage."""
-    return pwd_context.hash(password)
+    """Hash a password with bcrypt."""
+    return bcrypt.hashpw(
+        password.encode('utf-8'),
+        bcrypt.gensalt()
+    ).decode('utf-8')
 
 
 # =============================================================================
