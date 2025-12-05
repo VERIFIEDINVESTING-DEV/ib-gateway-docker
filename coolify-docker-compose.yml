@@ -81,9 +81,8 @@ services:
       - API_USERNAME=${API_USERNAME:?}
       - API_PASSWORD=${API_PASSWORD:?}
     ports:
-      # Only ib-api is exposed - Coolify will proxy this to HTTPS
-      # External 8401 maps to internal 8000 (mirrors IB's 4001 pattern)
-      - "8401:8000"
+      # Exposed to Coolify proxy - it will handle HTTPS
+      - "8000:8000"
 
 # Optional: named volume for settings persistence
 # volumes:
